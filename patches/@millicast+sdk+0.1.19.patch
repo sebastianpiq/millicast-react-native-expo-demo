@@ -1,0 +1,79 @@
+diff --git a/node_modules/@millicast/sdk/package.json b/node_modules/@millicast/sdk/package.json
+index c36a7be..a6bc7a7 100644
+--- a/node_modules/@millicast/sdk/package.json
++++ b/node_modules/@millicast/sdk/package.json
+@@ -9,9 +9,7 @@
+ 		"realtime",
+ 		"streaming"
+ 	],
+-	"main": "dist/millicast.cjs.js",
+-	"module": "dist/millicast.esm.js",
+-	"browser": "dist/millicast.umd.js",
++	"main": "src/index.js",
+ 	"scripts": {
+ 		"build": "rollup -c",
+ 		"start": "rollup -c -w",
+diff --git a/node_modules/@millicast/sdk/src/PeerConnection.js b/node_modules/@millicast/sdk/src/PeerConnection.js
+index 014b7bc..efe5c10 100644
+--- a/node_modules/@millicast/sdk/src/PeerConnection.js
++++ b/node_modules/@millicast/sdk/src/PeerConnection.js
+@@ -198,9 +198,9 @@ export default class PeerConnection extends EventEmitter {
+     logger.info('Creating peer offer')
+     const response = await this.peer.createOffer()
+     logger.info('Peer offer created')
+-    logger.debug('Peer offer response: ', response.sdp)
++    logger.debug('Peer offer response: ', response.session.sdp)
+ 
+-    this.sessionDescription = response
++    this.sessionDescription = response.session
+     if (!options.disableAudio) {
+       if (options.stereo) {
+         this.sessionDescription.sdp = SdpParser.setStereo(this.sessionDescription.sdp)
+@@ -523,9 +523,10 @@ const addPeerEvents = (instanceClass, peer) => {
+   }
+ }
+ 
+-const addMediaStreamToPeer = (peer, mediaStream, options) => {
++const addMediaStreamToPeer = async (peer, mediaStream, options) => {
+   logger.info('Adding mediaStream tracks to RTCPeerConnection')
+   for (const track of mediaStream.getTracks()) {
++    console.log(track);
+     const initOptions = {
+       streams: [mediaStream]
+     }
+@@ -546,9 +547,12 @@ const addMediaStreamToPeer = (peer, mediaStream, options) => {
+         logger.warn('SVC is only supported in Google Chrome')
+       }
+     }
+-
+-    peer.addTransceiver(track, initOptions)
+-    logger.info(`Track '${track.label}' added: `, `id: ${track.id}`, `kind: ${track.kind}`)
++    try {
++      await peer.addTransceiver(track, initOptions)
++      logger.info(`Track '${track.label}' added: `, `id: ${track.id}`, `kind: ${track.kind}`)
++    } catch (err) {
++      logger.error({err}, `transceiver not added`)
++    }
+   }
+ }
+ 
+diff --git a/node_modules/@millicast/sdk/src/utils/UserAgent.js b/node_modules/@millicast/sdk/src/utils/UserAgent.js
+index c2501fc..c921129 100644
+--- a/node_modules/@millicast/sdk/src/utils/UserAgent.js
++++ b/node_modules/@millicast/sdk/src/utils/UserAgent.js
+@@ -8,6 +8,7 @@ export default class UserAgent extends UAParser {
+   }
+ 
+   isChrome () {
++    return false
+     const browserData = this.getBrowser()
+     const osData = this.getOS()
+ 
+@@ -19,6 +20,7 @@ export default class UserAgent extends UAParser {
+   }
+ 
+   isFirefox () {
++    return false
+     const browserData = this.getBrowser()
+ 
+     return browserData.name.match(/Firefox/i)
